@@ -1,10 +1,12 @@
 ---
 title: "An Analysis of Red Wine"
 author: "Guy Bourne"
-date: "25 November 2017"
+date: "28 November 2017"
 output: html_document
 ---
 *Built with R `r getRversion()`*
+
+## Introduction
 
 Let me start with a disclaimer, I drink more wine than I should and less than I
 would like. Since moving to Australia, I have been spoilt for choice with a 
@@ -12,7 +14,7 @@ range of fantastic Aussie wines and when I realised that I had the opportunity
 to understand a little more about them whilst learning some new skills, well 
 who could resist? 
 
-> #### *"After the first glass, you see things as you wish they were. After the*
+> *"After the first glass, you see things as you wish they were. After the*
 *second, you see things as they are not. Finally, you see things as they really*
 *are, and that is the most horrible thing in the world."* 
                                                          **Oscar Wilde**
@@ -21,170 +23,555 @@ Given Oscar Wilde's warning, this analysis will be conducted sober, but the hope
 is that we will see the world of Red Wine as it really is, and that it won't be 
 all that bad, plus we'll have some fun getting there.
 
+Note that throughout this document, I'll be experimenting with different 
+aesthetics, so I am not aiming for consistency across plots; this would drive
+me crazy as a reviewer so apologies upfront!
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Load all of the packages that you end up using in your analysis in this code
 # chunk.
 
-# install these if necessary
-# install.packages('GGally',dependencies = T)
-# install.packages('scales',dependencies = T)
-# install.packages('memisc',dependencies = T)
-# install.packages('lattice',dependencies = T)
-# install.packages('MASS',dependencies = T)
-# install.packages('car',dependencies = T)
-# install.packages('reshape',dependencies = T)
-# install.packages('plyr',dependencies = T)
-#install.packages("ggplot2",dependencies = T)
+## Install these if necessary
+
+# options(repos=c(CRAN='cran.rstudio.com'))
+
+# install.packages("factoextra")
+# install.packages("FactoMineR")
+# install.packages("dplyr")
+# install.packages("ggthemes")
+# install.packages('reshape2')
+# install.packages('GGally')
+# install.packages('scales')
+# install.packages('memisc')
+# install.packages('lattice')
+# install.packages('MASS')
+# install.packages('car')
+# install.packages('reshape')
+# install.packages('plyr')
+# install.packages("ggplot2")
+# install.packages('kableExtra')
+# install.packages('gridExtra')
 
 # load the ggplot graphics package and the others
 library(ggplot2)
 library(GGally)
 library(scales)
 library(memisc)
+library(knitr)
+library(kableExtra)
+library(reshape2)
+library(gridExtra)
+library(ggthemes)
+library(dplyr)
+library(FactoMineR)
+library(factoextra)
+
+## Set some global options
+options(knitr.table.format = "html") 
 ```
 
 ```{r echo=FALSE, Load_the_Data}
 # Load the Data
+setwd('C:\\Users\\geeky\\Dropbox\\Learning\\MOOCs\\Udacity\\Data Analysis NanoDegree\\EDA\\Project\\Udacity-DataAnalysis-EDA')
+
+redWine <- read.csv(file = 'wineQualityReds.csv')
+redWine$X <- factor(redWine$X)
 
 ```
 
-> **Tip**: Before you create any plots, it is a good idea to provide a short
-introduction into the dataset that you are planning to explore. Replace this
-quoted text with that general information!
+We'll be exploring the measurable aspects of red wine and seeing how they 
+interact, looking for relationships, whilst also seeing how they relate to 
+critics score of 1 - 10. Note that the id variable X has been converted into
+a factor prior to analysis.
 
-# Univariate Plots Section
+## Initial Univariate analysis
 
-> **Tip**: In this section, you should perform some preliminary exploration of
-your dataset. Run some summaries of the data and create univariate plots to
-understand the structure of the individual variables in your dataset. Don't
-forget to add a comment after each plot or closely-related group of plots!
-There should be multiple code chunks and text sections; the first one below is
-just to help you get started.
+We'll start by summarising the dataset and producing a broad spectrum of plots
+to introduce the data.
 
-```{r echo=FALSE, Univariate_Plots}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#High level summaries of the data
+str(redWine)
+```
+
+Firstly, we note that there are no categorical variables in this dataset. 
+This may limit my ability to learn more about R plotting, however I think that 
+we'll be able to create some categorical buckets later to make sure that we can
+add some extra dimensions to plots.
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+## Create basic univariate statistics for all vars 
+
+for (i in  names(redWine)) {
+  if (i != 'X') {
+    assign(paste(i),summary(redWine[, i]))
+  }
+}
+
+## Present in a table using kable to make it pretty
+
+redWine.summary <- rbind(alcohol,
+                         chlorides,
+                         citric.acid,
+                         density,
+                         fixed.acidity,
+                         free.sulfur.dioxide,
+                         pH,
+                         residual.sugar,
+                         sulphates,
+                         total.sulfur.dioxide,
+                         volatile.acidity,
+                         quality)
+
+kable(redWine.summary) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  add_footnote(c(
+    "All acids, sugars, sulphates and density are measured in g/dm^3",
+    "Chlorides and sulphur dioxides are measured in mg/dm^3",
+    "Alcohol is measured in % by volume",
+    "Quality is a score between 1 and 10"), notation = "symbol")
 
 ```
 
-> **Tip**: Make sure that you leave a blank line between the start / end of
-each code block and the end / start of your Markdown text so that it is
-formatted nicely in the knitted text. Note as well that text on consecutive
-lines is treated as a single space. Make sure you have a blank line between
-your paragraphs so that they too are formatted for easy readability.
+I'm most interested in how much fun the judges had rating the wine, so 
+I'd like to see the distribution of the strength of the wine (alcohol).
 
-# Univariate Analysis
+```{r echo=FALSE, fig.align = "center", message=FALSE, warning=FALSE}
+ggplot(aes(x=alcohol), data = redWine) +
+  geom_histogram() + 
+  theme_minimal()
+```
 
-> **Tip**: Now that you've completed your univariate explorations, it's time to
-reflect on and summarize what you've found. Use the questions below to help you
-gather your observations and add your own if you have other thoughts!
+What I find most interesting about this initial plot is that the distribution 
+has a skew to the right. Living in Australia I'm used to quite bold red wines,
+in particular Shiraz. In doing a little research I found a quote from James 
+Halliday, a renowned wine expert.
 
-### What is the structure of your dataset?
+> *"For the sake of simplicity, the alcohol of any red wine in excess of 14.5%
+(alcohol by volume) can be said to be high. As recently as the 1980s, the 
+benchmark was 13.5%. Ten years earlier, it might have been 12.5%."*
+                                                         **James Halliday**
 
-### What is/are the main feature(s) of interest in your dataset?
+Note that we only have `r nrow(subset(redWine,redWine$alcohol >= 12.5))` wines
+above the old standard, and just 
+`r nrow(subset(redWine,redWine$alcohol >= 14.5))` 
+above the more recent definition. This confirms that these are quite different 
+from the new world wines that I tend to enjoy. It might be worth adding some 
+indicators to split by these strength boundaries for later analysis.
 
-### What other features in the dataset do you think will help support your \
-investigation into your feature(s) of interest?
+Let's get on with it and create histograms for the other variables.
 
-### Did you create any new variables from existing variables in the dataset?
+```{r echo=FALSE,fig.align = "center", message=FALSE, warning=FALSE}
+## Create histograms for all variables (Excluding X)
 
-### Of the features you investigated, were there any unusual distributions? \
-Did you perform any operations on the data to tidy, adjust, or change the form \
-of the data? If so, why did you do this?
+ggplot(data = melt(redWine), mapping = aes(x = value)) + 
+  geom_histogram(bins = 30) + facet_wrap(~variable, scales = 'free_x') + 
+  theme_minimal()
 
-
-# Bivariate Plots Section
-
-> **Tip**: Based on what you saw in the univariate plots, what relationships
-between variables might be interesting to look at in this section? Don't limit
-yourself to relationships between a main output feature and one of the
-supporting variables. Try to look at relationships between supporting variables
-as well.
-
-```{r echo=FALSE, Bivariate_Plots}
+## Add the strength boundaries for later
+redWine$strength.category <- factor(
+  ifelse(redWine$alcohol < 10 , 'Wk',
+                                   ifelse(redWine$alcohol < 12.5, 'Mod',
+                                          ifelse(redWine$alcohol < 14.5, 'Str'
+                                                 , 'Aus')
+                                   )
+  ), levels = c('Wk','Mod','Str','Aus')
+)
 
 ```
 
-# Bivariate Analysis
+The sugar and sulphates have a left skew, which is to be expected given the bias
+towards low alcohol wines in the data. I would have expected the acidity to have 
+roughly the same shape, so that might be something worth considering as we 
+start to look at bivariate relationships.
 
-> **Tip**: As before, summarize what you found in your bivariate explorations
-here. Use the questions below to guide your discussion.
+As expected the scale for quality follows a roughly normal distribution. The 
+rough facet diagram is too granular, but we'll re-render it below.
 
-### Talk about some of the relationships you observed in this part of the \
-investigation. How did the feature(s) of interest vary with other features in \
-the dataset?
+```{r echo=FALSE,fig.align = "center", message=FALSE, warning=FALSE}
 
-### Did you observe any interesting relationships between the other features \
-(not the main feature(s) of interest)?
-
-### What was the strongest relationship you found?
-
-
-# Multivariate Plots Section
-
-> **Tip**: Now it's time to put everything together. Based on what you found in
-the bivariate plots section, create a few multivariate plots to investigate
-more complex interactions between variables. Make sure that the plots that you
-create here are justified by the plots you explored in the previous section. If
-you plan on creating any mathematical models, this is the section where you
-will do that.
-
-```{r echo=FALSE, Multivariate_Plots}
+ggplot(aes(x=quality), data = redWine) +
+  stat_count(geom = "bar") + 
+  theme_minimal()
 
 ```
 
-# Multivariate Analysis
+## Bivariate Plots Section
 
-### Talk about some of the relationships you observed in this part of the \
-investigation. Were there features that strengthened each other in terms of \
-looking at your feature(s) of interest?
+In this section I'm mostly interested in observing the relationship between 
+quality. But before exploring that in detail, let's look at the relationships
+between all the variables. Typically, I would start by looking at correlations 
+and then expand this to scatter plots of all pairs of variables.
 
-### Were there any interesting or surprising interactions between features?
 
-### OPTIONAL: Did you create any models with your dataset? Discuss the \
-strengths and limitations of your model.
+```{r echo=FALSE, Correlation_plot, fig.height = 12, fig.width = 12, fig.align = "center", message=FALSE, warning=FALSE}
+
+ggcorr(redWine[, 2:13], geom = 'circle', min_size = 5, max_size = 15) + 
+  theme_minimal()
+
+
+```
+
+Our strongest correlation with quality is the amount of alcohol, perhaps our 
+judges were from the Barossa Valley! The level of citric acids and sulphates 
+seems to have a moderate correlation, and we can see that having a large amount
+of volatile acid can also annoy judges. This shouldn't come as a surprise, as 
+this tends to be what can give wine a vinegar taste.
+
+We'll plot all the scatters to see if anything jumps out, however given the 
+number of variables it may be tricky to read the plots and we'll have to 
+generate ones that look interesting and take a closer look later.
+
+From this point on I'll be considering quality as a categorical variable, whilst 
+it's been useful to calculate correlations; for multivariate plotting treating 
+it as a factor should yield more insight.
+
+```{r echo=FALSE, Bivariate_Plots, fig.height = 12, fig.width = 12,fig.align = "center", message=FALSE, warning=FALSE}
+
+##Change quality to a factor
+
+redWine$quality <- factor(redWine$quality)
+
+ggpairs(redWine[, 2:13],mapping = aes(alpha = 0.05)) + 
+  theme_minimal()
+
+
+```
+
+Let's explore some of the highly correlated variables in more detail. 
+
+```{r echo = FALSE, violins1, fig.height = 12, fig.width = 15, fig.align = "center", message=FALSE, warning=FALSE}
+
+
+ggplot(redWine, aes(quality,citric.acid)) + 
+  geom_violin(trim = FALSE, fill='lightskyblue1', color="midnightblue") + 
+  geom_boxplot(width = 0.1) + 
+  theme_minimal()
+```
+
+This first violin plot reconfirms that better rated wines tend to have a higher 
+concentration of citric acid. In the notes provided it states that this provides
+a freshness and flavour to the wine. A little further research shows that citric
+acid can be unstable and can ferment into acetic acid which is highly 
+undesirable. Let's have a look at the relationship between citric acid and see
+if the antimicrobial effect limits this risk. We had seen a positive correlation,
+but let's explore further.
+
+```{r echo = FALSE, scatter_citric, fig.align = "center", message=FALSE, warning=FALSE}
+ggplot(aes(x = citric.acid, y = sulphates), data = redWine) + 
+  geom_point(aes(alpha = 0.2, color = quality)) +
+  geom_smooth()
+
+```
+
+The default model applied here is a little misleading given what looks like an 
+erroneous data point at (1,2). Let's try again, this time removing the outlier.
+We'll also adjust the zoom a little to take a closer look at the trend without 
+removing more of the data.
+
+```{r echo = FALSE, scatter_citric2, fig.align = "center", message=FALSE, warning=FALSE}
+ggplot(aes(x=citric.acid, y = sulphates), data = subset(redWine, 
+                                                        redWine$citric.acid <1 )) + 
+  geom_point(aes(color = quality)) +
+  geom_smooth(color = 'black', fill = 'pink', method = lm)  +
+  coord_cartesian(ylim = c(0.25, 1.25)) +
+  scale_colour_grey() +
+  theme_tufte()
+
+```
+
+This does still give us a positive trend, but it's not as significant as we
+might have hoped. What we can see is that the quality increases with each 
+variable. Let's look at the sulphates
+
+```{r echo = FALSE, violins2, ,fig.height = 12, fig.width = 15, fig.align = "center", message=FALSE, warning=FALSE}
+ggplot(redWine,aes(quality, sulphates)) + 
+  geom_violin(trim = FALSE, fill = 'steelblue3', color = "midnightblue") + 
+  geom_boxplot(width = 0.1) + 
+  theme_minimal()
+```
+
+We see a similar trend again with a gradual increase in median values as 
+we go up the quality grades. These plots show that the sulphates have less
+volatility than the amount of citric acid in each category, and glancing back at
+our first histogram plots we can see that it is a quite tight distribution with a 
+standard deviation of `r sd(redWine$sulphates)` g/dm^3. Sulphates had quite a 
+strong positive correlation with chlorides. Let's take a closer look.
+
+```{r echo = FALSE, scatter_sulphates, fig.align = "center", message=FALSE, warning=FALSE}
+
+ggplot(aes(x = sulphates, y = chlorides), data = redWine) + 
+  geom_point(aes(color = quality)) +
+  geom_smooth(color = 'black', fill = 'red', method = loess) +
+  coord_cartesian(xlim = c(min(redWine$sulphates), 1.5)) +
+  scale_colour_grey() +
+  theme_economist()
+
+```
+
+Using the loess model to try and tease out a trend, we don't really find 
+anything convincing and perhaps we should have stuck with a simple linear 
+model. However, it doesn't tell us much more than the correlation matrix. 
+
+```{r echo = FALSE, violins3, ,fig.height = 12, fig.width = 15, fig.align = "center", message=FALSE, warning=FALSE}
+ggplot(redWine,aes(quality,alcohol)) + 
+  geom_violin(trim = FALSE, fill = 'steelblue4', color = "midnightblue") + 
+  geom_boxplot(width = 0.1) + 
+  theme_minimal()
+```
+
+This plot is interesting, we had noted earlier that wines with higher alcohol 
+content tended to get better scores, and whilst this is true, we can see that 
+the standard deviation of alcohol content is different across the ratings.
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+redWine.wine_by_quality <- redWine %>%
+  group_by(quality) %>%
+  summarise(al.stdDev = sd(alcohol),
+            al.mean = mean(alcohol),
+            al.median = median(alcohol),
+            al.n = n()) %>%
+  arrange(quality)
+
+kable(redWine.wine_by_quality) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+
+```
+
+We can see that the standard deviation of the alcohol is increasing 
+significantly as we go up the ratings. For our other two variables correlated
+with quality, the distribution wasn't quite so wide.
+
+## Multivariate Analysis
+
+### Clusters
+
+In this section we're going to cluster the data and observe the frequency
+of ratings across the analytically derived clusters. Given R is new for me, I'm
+going to stick to simple clustering with using k-means and I'll try a few values
+of K.
+
+```{r echo=FALSE, Multivariate_Plots, fig.align = "center", message=FALSE, warning=FALSE}
+
+#Run the clustering algorithm
+
+set.seed(1234)
+
+km.res <- kmeans(scale(redWine[, 2:12]), 5, nstart = 25)
+
+fviz_cluster(km.res, 
+             data = redWine[, 2:12],
+             geom = 'point',
+             ggtheme = theme_minimal(),
+             main = "kMeans Clustering Plot k=5"
+)
+
+```
+
+This gives us a good starting point, we can see the 5 clusters across the two 
+primary dimensions that have been created through principal components analysis
+(PCA). Explaining PCA is beyond the scope of this exploration, however it is 
+convenient for the presentation of multidimensional clusters. 
+
+The whilst the groups do show separation, I think we could do better.
+
+```{r echo=FALSE, Clustering2, fig.align = "center", message=FALSE, warning=FALSE}
+
+#determine optimal cluster size
+
+fviz_nbclust(scale(redWine[, 2:12]), kmeans, method = "gap_stat")
+
+```
+
+This tells us that to maximise the gap between our clusters we should 
+produce a cluster diagram with 2 centroids. However, I think that having at least
+3 would give us some more interesting talking points without sacrificing the
+statistics. Let's look at the two cluster diagrams and make the call.
+
+```{r echo=FALSE, Clustering3, fig.width = 15, fig.align = "center", message=FALSE, warning=FALSE}
+
+#determine optimal cluster size
+
+
+km.res.2 <- kmeans(scale(redWine[, 2:12]), 2, nstart = 25)
+km.res.3 <- kmeans(scale(redWine[, 2:12]), 3, nstart = 25)
+
+kmg.2 <- fviz_cluster(km.res.2, 
+             data = redWine[, 2:12],
+             geom = 'point',
+             ggtheme = theme_minimal(),
+             main = "kMeans Clustering Plot k=2"
+)
+
+
+kmg.3 <- fviz_cluster(km.res.3, 
+             data = redWine[, 2:12],
+             geom = 'point',
+             ggtheme = theme_minimal(),
+             main = "kMeans Clustering Plot k=3"
+)
+
+grid.arrange(kmg.2, kmg.3, ncol=2)
+
+```
+
+Whilst we have some overlap, I think we're ok to go with 3 clusters to made our
+analysis a little more interesting. Let's add our clusters to the data and look 
+at whether is related to our clusters.
+
+```{r, echo=FALSE, fig.align = "center"}
+
+## Bind the clusters to the original dataframe
+
+redWine.clusters <- cbind(redWine, km.res.3[1])
+
+## Convert clusters to text as we're treating as a category
+
+redWine.clusters$cluster <- as.character(redWine.clusters$cluster)
+
+## Plot it!
+
+ggplot(aes(x=quality), data = redWine.clusters) +
+  stat_count(geom = "bar", aes(fill = cluster)) + 
+  theme_minimal()
+
+## Tabulate it!
+
+
+redWine.wine_by_cluster <- redWine.clusters %>%
+  group_by(cluster) %>%
+  summarise(qual.stdDev = sd(as.integer(quality)),
+            qual.mean = mean(as.integer(quality)),
+            qual.median = median(as.integer(quality)),
+            qual.n = n()) %>%
+  arrange(cluster)
+
+kable(redWine.wine_by_cluster) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+
+It looks like we have a drift away from wines in cluster 2 and towards those in 
+cluster 1. By changing the visualisation to represent proportions we can take
+a closer look.
+
+```{r, echo=FALSE, fig.align = "center"}
+
+## Plot it!
+
+ggplot(aes(x = quality), data = redWine.clusters) +
+  stat_count(geom = "bar", aes(fill = cluster), position = 'fill') + 
+  theme_minimal()
+
+```
+
+This has made the relationship a little clearer, however the question that 
+springs to mind is, "ae the differences in proportion statistically 
+significant?". Whilst we could model this with t-Tests or (even better) include
+our clusters in a regression model to understand the importance, I fell that 
+this is where our exploration will end for now. Time to wrap up!
 
 ------
 
-# Final Plots and Summary
+## Final Plots and Summary
 
-> **Tip**: You've done a lot of exploration and have built up an understanding
-of the structure of and relationships between the variables in your dataset.
-Here, you will select three plots from all of your previous exploration to
-present here as a summary of some of your most interesting findings. Make sure
-that you have refined your selected plots for good titling, axis labels (with
-units), and good aesthetic choices (e.g. color, transparency). After each plot,
-make sure you justify why you chose each plot by describing what it shows.
+To summarise the findings, I'd like to showcase 3 plots. Firstly, 
+the correlation matrix. I find this a hugely useful tool to declutter data,
+particularly finding variables that may be equivalent or highly dependent. 
+In this analysis it was primarily used to flag variables that seemed to linearly
+influence the judges score.
 
-### Plot One
-```{r echo=FALSE, Plot_One}
+### Plot One: Correlation Matrix
+```{r echo=FALSE, Plot_One, fig.height = 12, fig.width = 12, fig.align = "center", message=FALSE, warning=FALSE}
+
+# To recreate corr plot need quality as  numeric
+redWine$quality <- as.numeric(redWine$quality)
+
+ggcorr(redWine[, 2:13], geom = 'circle', min_size = 5, max_size = 15) + 
+  labs(title = 'Red Wine Correlation Matrix', caption = 'Visualising linear 
+       relationships between variables') + 
+  theme_tufte()
+
 
 ```
 
 ### Description One
+At a glance this plot tells us that alcohol, sulphates and citric acid are 
+correlated with the judges' quality score. This makes sense. Our domain knowledge
+and external research tells us that alcohol and citric acids can alter the 
+bouquet and hence the taste. Sulphates act as a control preventing chemical 
+reactions that can impair the wine.
 
 
-### Plot Two
-```{r echo=FALSE, Plot_Two}
+### Plot Two: Violin plot of Alcohol distribution by quality
+```{r echo=FALSE, Plot_Two, fig.height = 12, fig.width = 12, fig.align = "center", message=FALSE, warning=FALSE}
+
+ggplot(redWine,aes(as.factor(quality), alcohol)) + 
+  geom_violin(trim = FALSE, fill = 'steelblue4', color = "midnightblue") + 
+  geom_boxplot(width = 0.1) + 
+  labs(title = 'Violin plot of Alcohol Distribution by Quality',
+       x = "quality",
+       caption = '* Box plots represent median and IQR of distribution') +
+  theme_tufte()
+
 
 ```
 
 ### Description Two
+The main reason that I like this plot is that it can convey a lot of information
+to an analyst quickly. Only by overlaying the distribution did it become 
+apparent that the standard deviation of alcohol in highly rated wines was so 
+broad, meaning that alcohol content alone cannot be considered to be a causal 
+factor (which would not be the case if I were a judge, I'm sure.)  
 
+### Plot Three: Clusters
+```{r echo=FALSE, Plot_Three,fig.height = 12, fig.width = 12,fig.align = "center", message=FALSE, warning=FALSE}
 
-### Plot Three
-```{r echo=FALSE, Plot_Three}
+ggplot(aes(x = as.factor(quality)), data = redWine.clusters) +
+  stat_count(geom = "bar", aes(fill = cluster)) + 
+  labs(title = 'Distribution of quality by cluster', x = "quality") +
+  theme_tufte()
 
 ```
 
 ### Description Three
 
+I've chosen this stacked bar chart as my final observation as I think it can 
+act as a stepping stone for the next phase of analysis, whether that be refining 
+the number of clusters (you get some interesting results using k=5), performing
+inference tests or including the variable in a regression model to try to 
+predict quality ratings. 
+
 ------
 
-# Reflection
+## Reflection
 
-> **Tip**: Here's the final step! Reflect on the exploration you performed and
-the insights you found. What were some of the struggles that you went through?
-What went well? What was surprising? Make sure you include an insight into
-future work that could be done with the dataset.
+This dataset was incredibly tidy and easy to perform standard analysis, a 
+perfect playground for learning a new language. I had hoped to learn more about 
+red wines in the analysis, but unfortunately without more context it has done 
+little to enlighten my next visit to the bottle shop. However, I have learnt a 
+lot about the science of wine making, and the chemical reactions to aim for and
+avoid when crafting a palatable wine. 
 
-> **Tip**: Don't forget to remove this, and the other **Tip** sections before
-saving your final work and knitting the final report!
+The cluster analysis hints at what are essentially similar chemical profiles.
+With some further detail an analyst might be able to infer other properties 
+about the wine, such as the region, age or vintage, varieties of grape and 
+perhaps even more revealing characteristics about the process of making the 
+wine. The reader should note that I haven't carried out a regression analysis 
+to predict quality as a matter of principle; personally, I feel that wine is to 
+be enjoyed rather than judged.
+
+### A parting quote:
+ 
+> *"Wine can of their wits the wise beguile, Make the sage frolic, and the*
+*serious smile"*
+                **Homer**
+
+But what does it do to the Data Analyst...?
+
+Thank you for your time.
+
+Guy
